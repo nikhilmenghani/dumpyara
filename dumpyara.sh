@@ -227,78 +227,80 @@ printf "# %s\n- manufacturer: %s\n- platform: %s\n- codename: %s\n- flavor: %s\n
 cat "$PROJECT_DIR"/working/"${UNZIP_DIR}"/README.md
 
 # Generate AOSP device tree
-if python3 -c "import aospdtgen"; then
-    echo "aospdtgen installed, generating device tree"
-    mkdir -p "${PROJECT_DIR}/working/${UNZIP_DIR}/aosp-device-tree"
-    if python3 -m aospdtgen . --output "${PROJECT_DIR}/working/${UNZIP_DIR}/aosp-device-tree"; then
-        echo "AOSP device tree successfully generated"
-    else
-        echo "Failed to generate AOSP device tree"
-    fi
-fi
+# if python3 -c "import aospdtgen"; then
+#     echo "aospdtgen installed, generating device tree"
+#     mkdir -p "${PROJECT_DIR}/working/${UNZIP_DIR}/aosp-device-tree"
+#     if python3 -m aospdtgen . --output "${PROJECT_DIR}/working/${UNZIP_DIR}/aosp-device-tree"; then
+#         echo "AOSP device tree successfully generated"
+#     else
+#         echo "Failed to generate AOSP device tree"
+#     fi
+# fi
 
 # copy file names
 chown "$(whoami)" ./* -R
 chmod -R u+rwX ./* #ensure final permissions
 find "$PROJECT_DIR"/working/"${UNZIP_DIR}" -type f -printf '%P\n' | sort | grep -v ".git/" > "$PROJECT_DIR"/working/"${UNZIP_DIR}"/all_files.txt
 
-if [[ -n $GIT_OAUTH_TOKEN ]]; then
-    GITPUSH=(git push https://"$GIT_OAUTH_TOKEN"@github.com/$ORG/"${repo,,}".git "$branch")
-    curl --silent --fail "https://raw.githubusercontent.com/$ORG/$repo/$branch/all_files.txt" 2> /dev/null && echo "Firmware already dumped!" && exit 1
-    git init
-    if [[ -z "$(git config --get user.email)" ]]; then
-        git config user.email AndroidDumps@github.com
-    fi
-    if [[ -z "$(git config --get user.name)" ]]; then
-        git config user.name AndroidDumps
-    fi
-    curl -s -X POST -H "Authorization: token ${GIT_OAUTH_TOKEN}" -d '{ "name": "'"$repo"'" }' "https://api.github.com/orgs/${ORG}/repos" #create new repo
-    curl -s -X PUT -H "Authorization: token ${GIT_OAUTH_TOKEN}" -H "Accept: application/vnd.github.mercy-preview+json" -d '{ "names": ["'"$manufacturer"'","'"$platform"'","'"$top_codename"'"]}' "https://api.github.com/repos/${ORG}/${repo}/topics"
-    git remote add origin https://github.com/$ORG/"${repo,,}".git
-    git checkout -b "$branch"
-    find . -size +97M -printf '%P\n' -o -name "*sensetime*" -printf '%P\n' -o -name "*.lic" -printf '%P\n' >| .gitignore
-    git add --all
-    git commit -asm "Add ${description}"
-    git update-ref -d HEAD
-    git reset system/ vendor/ product/
-    git checkout -b "$branch"
-    git commit -asm "Add extras for ${description}" && "${GITPUSH[@]}"
-    git add vendor/
-    git commit -asm "Add vendor for ${description}" && "${GITPUSH[@]}"
-    git add system/system/app/ || git add system/app/
-    git commit -asm "Add system app for ${description}" && "${GITPUSH[@]}"
-    git add system/system/priv-app/ || git add system/priv-app/
-    git commit -asm "Add system priv-app for ${description}" && "${GITPUSH[@]}"
-    git add system/
-    git commit -asm "Add system for ${description}" && "${GITPUSH[@]}"
-    git add product/app/
-    git commit -asm "Add product app for ${description}" && "${GITPUSH[@]}"
-    git add product/priv-app/
-    git commit -asm "Add product priv-app for ${description}" && "${GITPUSH[@]}"
-    git add product/
-    git commit -asm "Add product for ${description}" && "${GITPUSH[@]}"
-else
-    echo "Dump done locally."
-    exit 1
-fi
+echo "Dump done locally."
 
-# Telegram channel
-TG_TOKEN=$(< "$PROJECT_DIR"/.tgtoken)
-if [[ -n "$TG_TOKEN" ]]; then
-    CHAT_ID="@android_dumps"
-    commit_head=$(git log --format=format:%H | head -n 1)
-    commit_link="https://github.com/$ORG/$repo/commit/$commit_head"
-    echo -e "Sending telegram notification"
-    printf "<b>Brand: %s</b>" "$brand" >| "$PROJECT_DIR"/working/tg.html
-    {
-        printf "\n<b>Device: %s</b>" "$codename"
-        printf "\n<b>Version:</b> %s" "$release"
-        printf "\n<b>Fingerprint:</b> %s" "$fingerprint"
-        printf "\n<b>GitHub:</b>"
-        printf "\n<a href=\"%s\">Commit</a>" "$commit_link"
-        printf "\n<a href=\"https://github.com/%s/%s/tree/%s/\">%s</a>" "$ORG" "$repo" "$branch" "$codename"
-    } >> "$PROJECT_DIR"/working/tg.html
-    TEXT=$(< "$PROJECT_DIR"/working/tg.html)
-    curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendmessage" --data "text=${TEXT}&chat_id=${CHAT_ID}&parse_mode=HTML&disable_web_page_preview=True" > /dev/null
-    rm -rf "$PROJECT_DIR"/working/tg.html
-fi
+# if [[ -n $GIT_OAUTH_TOKEN ]]; then
+#     GITPUSH=(git push https://"$GIT_OAUTH_TOKEN"@github.com/$ORG/"${repo,,}".git "$branch")
+#     curl --silent --fail "https://raw.githubusercontent.com/$ORG/$repo/$branch/all_files.txt" 2> /dev/null && echo "Firmware already dumped!" && exit 1
+#     git init
+#     if [[ -z "$(git config --get user.email)" ]]; then
+#         git config user.email AndroidDumps@github.com
+#     fi
+#     if [[ -z "$(git config --get user.name)" ]]; then
+#         git config user.name AndroidDumps
+#     fi
+#     curl -s -X POST -H "Authorization: token ${GIT_OAUTH_TOKEN}" -d '{ "name": "'"$repo"'" }' "https://api.github.com/orgs/${ORG}/repos" #create new repo
+#     curl -s -X PUT -H "Authorization: token ${GIT_OAUTH_TOKEN}" -H "Accept: application/vnd.github.mercy-preview+json" -d '{ "names": ["'"$manufacturer"'","'"$platform"'","'"$top_codename"'"]}' "https://api.github.com/repos/${ORG}/${repo}/topics"
+#     git remote add origin https://github.com/$ORG/"${repo,,}".git
+#     git checkout -b "$branch"
+#     find . -size +97M -printf '%P\n' -o -name "*sensetime*" -printf '%P\n' -o -name "*.lic" -printf '%P\n' >| .gitignore
+#     git add --all
+#     git commit -asm "Add ${description}"
+#     git update-ref -d HEAD
+#     git reset system/ vendor/ product/
+#     git checkout -b "$branch"
+#     git commit -asm "Add extras for ${description}" && "${GITPUSH[@]}"
+#     git add vendor/
+#     git commit -asm "Add vendor for ${description}" && "${GITPUSH[@]}"
+#     git add system/system/app/ || git add system/app/
+#     git commit -asm "Add system app for ${description}" && "${GITPUSH[@]}"
+#     git add system/system/priv-app/ || git add system/priv-app/
+#     git commit -asm "Add system priv-app for ${description}" && "${GITPUSH[@]}"
+#     git add system/
+#     git commit -asm "Add system for ${description}" && "${GITPUSH[@]}"
+#     git add product/app/
+#     git commit -asm "Add product app for ${description}" && "${GITPUSH[@]}"
+#     git add product/priv-app/
+#     git commit -asm "Add product priv-app for ${description}" && "${GITPUSH[@]}"
+#     git add product/
+#     git commit -asm "Add product for ${description}" && "${GITPUSH[@]}"
+# else
+#     echo "Dump done locally."
+#     exit 1
+# fi
+
+# # Telegram channel
+# TG_TOKEN=$(< "$PROJECT_DIR"/.tgtoken)
+# if [[ -n "$TG_TOKEN" ]]; then
+#     CHAT_ID="@android_dumps"
+#     commit_head=$(git log --format=format:%H | head -n 1)
+#     commit_link="https://github.com/$ORG/$repo/commit/$commit_head"
+#     echo -e "Sending telegram notification"
+#     printf "<b>Brand: %s</b>" "$brand" >| "$PROJECT_DIR"/working/tg.html
+#     {
+#         printf "\n<b>Device: %s</b>" "$codename"
+#         printf "\n<b>Version:</b> %s" "$release"
+#         printf "\n<b>Fingerprint:</b> %s" "$fingerprint"
+#         printf "\n<b>GitHub:</b>"
+#         printf "\n<a href=\"%s\">Commit</a>" "$commit_link"
+#         printf "\n<a href=\"https://github.com/%s/%s/tree/%s/\">%s</a>" "$ORG" "$repo" "$branch" "$codename"
+#     } >> "$PROJECT_DIR"/working/tg.html
+#     TEXT=$(< "$PROJECT_DIR"/working/tg.html)
+#     curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendmessage" --data "text=${TEXT}&chat_id=${CHAT_ID}&parse_mode=HTML&disable_web_page_preview=True" > /dev/null
+#     rm -rf "$PROJECT_DIR"/working/tg.html
+# fi
